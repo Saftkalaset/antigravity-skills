@@ -5,12 +5,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "=== Setting up Antigravity Skills & Whitelist ==="
 
-# 1. Symlink skills to global Antigravity config
+# 1. Symlink shared workspace skills to the existing global Antigravity IDE/App config
 mkdir -p "$HOME/.gemini/config/skills"
-for skill in "$SCRIPT_DIR"/skills/*; do
+for skill in "$SCRIPT_DIR"/.agents/skills/*; do
   if [ -d "$skill" ]; then
     name="$(basename "$skill")"
-    ln -sfn "$skill" "$HOME/.gemini/config/skills/$name"
+    target="$HOME/.gemini/config/skills/$name"
+    if [ -e "$target" ] && [ ! -L "$target" ]; then
+      echo "[!] Refusing to replace existing non-symlink: $target" >&2
+      exit 1
+    fi
+    ln -sfn "$skill" "$target"
     echo "[✓] Linked skill: $name -> ~/.gemini/config/skills/$name"
   fi
 done
@@ -21,7 +26,7 @@ SETTINGS_FILE="$HOME/.gemini/antigravity-cli/settings.json"
 PERMISSIONS_FILE="$SCRIPT_DIR/config/permissions.json"
 
 python3 - <<EOF
-import json, os
+import json, os, shutil, sys, tempfile, time
 
 settings_path = "$SETTINGS_FILE"
 permissions_path = "$PERMISSIONS_FILE"
@@ -32,26 +37,48 @@ if not os.path.exists(permissions_path):
 
 with open(permissions_path, 'r') as f:
     allowed = json.load(f)
+if not isinstance(allowed, list) or not all(isinstance(x, str) for x in allowed):
+    raise SystemExit("permissions.json must contain a JSON array of strings")
 
 if os.path.exists(settings_path):
     with open(settings_path, 'r') as f:
         try:
             data = json.load(f)
-        except Exception:
-            data = {}
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"Invalid JSON in {settings_path}; left unchanged: {exc}")
 else:
     data = {}
 
-current_perms = set(data.get("permissions", {}).get("allow", []))
+if not isinstance(data, dict):
+    raise SystemExit(f"Expected a JSON object in {settings_path}; left unchanged")
+if "permissions" in data and not isinstance(data["permissions"], dict):
+    raise SystemExit(f"Expected permissions to be an object in {settings_path}; left unchanged")
+permissions = data.setdefault("permissions", {})
+if "allow" in permissions and (not isinstance(permissions["allow"], list) or not all(isinstance(x, str) for x in permissions["allow"])):
+    raise SystemExit(f"Expected permissions.allow to be an array of strings in {settings_path}; left unchanged")
+
+current_perms = set(permissions.get("allow", []))
 current_perms.update(allowed)
+permissions["allow"] = sorted(current_perms)
 
-if "permissions" not in data:
-    data["permissions"] = {}
-data["permissions"]["allow"] = sorted(list(current_perms))
-
-with open(settings_path, 'w') as f:
-    json.dump(data, f, indent=2)
-    f.write('\n')
+if os.path.exists(settings_path):
+    backup = settings_path + ".bak." + time.strftime("%Y%m%d-%H%M%S")
+    shutil.copy2(settings_path, backup)
+    print(f"[i] Backup: {backup}")
+fd, temp_path = tempfile.mkstemp(prefix="settings.", suffix=".tmp", dir=os.path.dirname(settings_path))
+try:
+    with os.fdopen(fd, 'w') as f:
+        json.dump(data, f, indent=2)
+        f.write('\n')
+        f.flush()
+        os.fsync(f.fileno())
+    with open(temp_path, 'r') as f:
+        json.load(f)
+    os.replace(temp_path, settings_path)
+except Exception:
+    try: os.unlink(temp_path)
+    except FileNotFoundError: pass
+    raise
 
 print(f"[✓] Whitelist updated: {len(data['permissions']['allow'])} permissions active in {settings_path}")
 EOF
