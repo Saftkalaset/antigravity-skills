@@ -26,6 +26,14 @@
 | **Feature 1** | 0.0 mm | **0.0 mm** | Clearance notes (slip fit, press fit, etc.) |
 | **Feature 2** | 0.0 mm | **0.0 mm** | ... |
 
+### Scene Structure & Coordinate Origins
+
+| Collection | Object Name | Role / Modifiers | Functional Origin `(X, Y, Z)` | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| `1_Printable_Parts` | `<Main_Part>` | Primary printable body (`MANIFOLD` booleans) | `(0.0, 0.0, 0.0)` | Exported to `<Project_Name>.3mf` |
+| `2_Boolean_Cutters` | `Cutter_<Feature>` | Analytical cutter (`Mirror` if symmetric) | Feature axis center | Hidden via `hide_set(True)` (`hide_viewport=False`) |
+| `3_References` | `Ref_<Product>` | Consolidated multi-material reference / scan | Mating interface center | Non-printable verification reference |
+
 ---
 
 ## 3. Key Decisions & Lessons Learned

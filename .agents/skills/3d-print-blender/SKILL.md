@@ -17,6 +17,15 @@ description: >-
 - If Blender MCP is unavailable, use another Blender access method only when the environment provides one. Otherwise, explain that modeling actions are blocked by the missing connection and provide the next setup step; do not claim to have edited or inspected a model.
 - Apply the same rule to viewport inspection, mesh validation, and 3MF export: use the available tools and report which checks or outputs could not be performed.
 
+### Canonical Scene Hierarchy & Origins
+Organize every project into three top-level collections so the Outliner stays clean and modifiers remain easy to edit:
+- **`1_Printable_Parts`** (visible): Only final printable objects (e.g., `positive_object`, `WedgePlug`).
+- **`2_Boolean_Cutters`** (hidden via `hide_set(True)`): All boolean difference/union helper meshes.
+- **`3_References`** (visible or toggleable): Consolidated multi-material reference models (`MiniPod_MK1_Reference`) and 3D scans (`mesh`).
+- **Orphan Cleanup:** Delete superseded cutter objects (`negative_plane_*`, internal construction helpers) and run `bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)` when consolidating.
+- **Depsgraph Visibility Rule (`hide_set` vs `hide_viewport`):** Always hide cutters or temporarily hidden references using `obj.hide_set(True)` while keeping `obj.hide_viewport = False`. Setting `hide_viewport = True` disables the object in Blender's evaluated dependency graph, which causes `evaluated_depsgraph_get()` to return unscaled coordinates and silently skips boolean modifiers referencing that object.
+- **Coordinate Origin Invariant (No Double Offsets):** Never mix object-level `obj.location` offsets with baked world-space vertex offsets. Build every cutter and sub-part with its local mesh centered at `(0, 0, 0)` on its functional axis and position it using `obj.location` and `obj.rotation_euler`. Coaxial mating features (e.g., reference model, screw counterbore, locating pins) must share the exact same `obj.location` origin.
+
 ## 2. Project Organization & Versioning
 - **Location:** All files must reside in `/home/john/Documents/Blender files/<Project Name>/`.
   Auto-create if missing (`os.makedirs(project_dir, exist_ok=True)`).
@@ -63,6 +72,35 @@ description: >-
   ```
 - If the extension or expected API is unavailable, report that and perform available checks (dimensions, transforms, normals, connected components, and boundary/non-manifold edges). A successful toolbox run alone does not prove a part is printable. Report the checks actually completed; do not claim validation that was not performed.
 - **Scope:** Slicing is handled by the user; focus on 3D modeling, tolerances, printable geometries, and clean mesh exports.
+
+### Boolean Architecture, Mating Contours & Kinematics
+- **Single-Shell Analytical Cutters:** Do not stack multiple overlapping boolean objects for a single compound feature (e.g., separate cylinder bore + box channel + dovetail slot). Instead, construct a single closed 2D keyhole/T-slot profile in `bmesh` and extrude it as one watertight cutter (`Cutter_<Feature>`). This prevents coplanar boolean slivers and allows adjusting the entire feature by moving one object.
+- **Mirror Symmetric Cutters:** Always use a `Mirror` modifier (`mirror_object=<Main_Part>`) on symmetric left/right features (`Cutter_<Feature>_Side`) rather than maintaining separate `_left` and `_right` meshes.
+- **Mating Footprint Inset (Preventing Protruding Lips):** When designing a flat mounting deck under a curved or spherical product, do not size the deck to the product's outer silhouette. Wrap the contour tightly around the actual fastener/locating-pin envelope and inset the perimeter $3\text{–}8\text{ mm}$ inside the product's flat bottom contact ring so no lip protrudes beneath the curved body.
+- **Variable Thickness Optimization:** Match wall/slab thickness to the local bending moment: keep lightly loaded perimeters slim and ramp thickness upward (where clearance permits) across high-stress cantilever necks and clamping blocks.
+- **3D Scan Alignment & Insertion Kinematics:**
+  - When aligning to a 3D scan, fit analytical geometry (e.g., least-squares 3D centerlines across scanned rod/surface vertices at the mating plane) to extract true symmetric spans and compound 3D slopes (`dX/dZ`, `dY/dZ`).
+  - Verify physical insertion kinematics: ensure hooked entry channels can clear fixed multi-rod/multi-pin spans without undercut lockout, ensure through-slots extend completely past top/bottom surfaces (never leave a trapped blind skin), and verify self-locking wedge angles ($\theta < \arctan(\mu)$, typically $5^\circ\text{–}8^\circ$ with $0.15\text{–}0.25\text{ mm}$ per-side clearance).
+- **Support-Free Overhang & Build-Plate Bevel Audit:**
+  - Avoid $45^\circ$ bottom chamfers starting directly at the build plate ($Z = Z_{\min}$), which are prone to upward perimeter curling on the first 10–15 layers; use steeper **$\le 30^\circ\text{–}35^\circ$ from vertical** ($55^\circ\text{–}60^\circ$ from horizontal) bottom bevels computed along the continuous 2D perimeter normal.
+  - On secondary parts (such as locking wedges or clips with grip tabs), chamfer overhanging flanges at $\le 35^\circ$ from vertical so they print support-free.
+  - Alongside `print3d_check_all()`, run an evaluated BMesh audit on every printable part to confirm **0 non-manifold edges, 0 zero-area sliver faces, and $0.0\text{ mm}^2$ of unintentional overhangs $> 45^\circ$ from vertical**:
+    ```python
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    eval_obj = obj.evaluated_get(depsgraph)
+    bm = bmesh.new()
+    bm.from_mesh(eval_obj.to_mesh())
+    bm.transform(obj.matrix_world)
+    z_min = min(v.co.z for v in bm.verts)
+    non_manifold = [e for e in bm.edges if not e.is_manifold]
+    zero_faces = [f for f in bm.faces if f.calc_area() < 1e-6]
+    steep_overhangs = [
+        f for f in bm.faces
+        if f.calc_area() >= 1e-4
+        and not (abs(f.calc_center_median().z - z_min) < 0.05 and f.normal.z < -0.99)
+        and f.normal.z < -0.7071  # > 45 deg from vertical
+    ]
+    ```
 
 ### Incremental Viewport Staging & Self-Evaluation Gates
 - When developing new shapes, major redesigns, or complex profiles, **never execute everything in a single monolithic script** (derivation + extrusion + booleans + bevels + materials).
