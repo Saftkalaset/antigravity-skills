@@ -35,25 +35,24 @@ python3 <skill-directory>/scripts/measure_reference.py bbox --image scratch/crop
 
 Record the source URL/file, view and measurement plane, calibration feature, pixel span, scale, and estimated uncertainty. Label every value as manufacturer-specified, directly measured, image-derived, or estimated. If perspective or occlusion makes a measurement unreliable, say so and request a better source or direct measurement.
 
-### 4. Apply 3D Printing Tolerances
-Convert raw physical measurements into CAD modeling targets using standard 3D print clearances (Prusa Core One / 0.4mm nozzle / PLA):
-* **Fit terminology:** Always state whether clearance is per side/radial or total added to a width/diameter. For a round fit, radial clearance `c` means the mating hole diameter is increased by `2c`. Treat values below as starting estimates, not guaranteed printer-specific fits.
-* **Tight sliding fit (e.g. cylinder cradle):** $+0.2\text{ mm}$ to $+0.3\text{ mm}$ radial clearance (thus $+0.4$ to $+0.6$ mm on diameter).
-* **Cable plug pass-through / cutout:** $+1.5\text{ mm}$ to $+2.0\text{ mm}$ per side (thus $+3$ to $+4$ mm total width; e.g. 12 mm plug to 15–16 mm opening).
-* **Self-supporting bridges:** Keep flat spans $\le 15\text{ mm}$, or use $45^\circ$ chamfers / rounded arches for larger spans.
+### 4. Apply 3D Printing Tolerances (Prusa Core One / 0.4mm Nozzle / PLA)
+Convert raw physical measurements into CAD modeling targets:
+* **Fit terminology:** Always state both per-side (radial) and total (diametral) clearance (`ID = OD + 2c`). Distinguish the **CAD target** from the **as-printed dimension**: enclosed circular bores in PLA shrink by $\sim 0.15\text{–}0.20\text{ mm}$ on the Prusa Core One due to chordal facet approximation and thermal contraction.
+* **Snug locating slip fit (e.g. cylinder collar):** $+0.20\text{ mm}$ radial ($+0.40\text{ mm}$ diametral; e.g., $60.0\text{ mm}$ column $\rightarrow 60.40\text{ mm}$ CAD ID $\rightarrow \approx 60.20\text{ mm}$ as-printed ID, leaving $\sim 0.10\text{ mm}$ physical clearance per side).
+* **Loose clearance fit:** $+0.30\text{ mm}$ radial ($+0.60\text{ mm}$ diametral).
+* **Uncertain nominal dimensions ($\pm 0.3\text{ mm}$ or image-derived):** Recommend printing a fast $5\text{ mm}$-tall fit-test ring coupon before printing the full body.
+* **Cable plug pass-through / cutout:** $+1.5\text{ mm}$ to $+2.25\text{ mm}$ per side ($+3.0$ to $+4.5\text{ mm}$ total width).
+* **Horizontal arches & bridges:** A $45^\circ$ peaked/teardrop roof is self-supporting; a smooth rounded arch with a flat center tangent requires slicer supports (or accepts minor inner-layer sag) on spans $> 10\text{ mm}$.
 
-### 5. Standard Output Format
-Return **only** the completed Mechanical Spec Sheet table to the caller. Adapt rows to the specific features relevant to the object being measured (e.g. mating contours, ports, buttons, mounting tabs, or clearances).
+### 5. Standard Output Format (Matches `PROJECT.md` Section 2)
+Return **only** the completed Mechanical Spec Sheet table in the exact 5-column format used by `PROJECT.md` so the caller can paste it directly without reformatting:
 
-#### Example: Desk Charger Stand Cutout
 ```markdown
 ### Mechanical Spec Sheet: [Product / Component Name]
 * **Reference Scale:** 20.23 px/mm (calibrated from 60.0 mm base diameter)
 
-| Feature | Raw Dimension / Evidence | 3D Print Target | Clearance / Tolerance Note |
-| :--- | :--- | :--- | :--- |
-| Outer Mating Body | 60.0 mm | 60.6 mm | +0.3 mm radial slip clearance |
-| Port Height from Base | 1.5 mm – 10.1 mm | 0.0 mm – 12.5 mm | +2.4 mm vertical clearance, flush with base floor |
-| Cable Cutout Width | 11.5 mm | 16.0 mm | +2.25 mm per side for plug insertion clearance |
-| Retained Wall / Bridge | 18.0 mm (total) | 5.5 mm bridge | Overhang arch R=4mm, self-supporting (no supports needed) |
+| Feature | Nominal | Clearance | **CAD Target** | Source / Confidence |
+| :--- | ---: | ---: | ---: | :--- |
+| Stand Base Column Ø | 60.0 | +0.20 /side (+0.40 Ø) | **60.40 ID** | Product spec + Core One PLA shrinkage compensation (med-high) |
+| Cable Cutout (W × H) | 11.5 × 7.0 | +2.25 /side, +5.5 H | **16.0 × 12.5** | USB-C housing + strain relief boot (high; rounded arch w/ support) |
 ```

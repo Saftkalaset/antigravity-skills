@@ -1,72 +1,23 @@
 # <Project Name>
+Status: v1 | Updated: YYYY-MM-DD | Blender: 5.2+ | Printer: Prusa Core One (0.4mm, PLA)
 
-> **Status:** [In Progress | Prototype vX | Ready to Print | Validated]  
-> **Last Updated:** YYYY-MM-DD  
-> **Blender Version:** [version]  
+## 1. Goal & Constraints
+- **Function:** <1-2 sentences on what the part does and what it mates with>
+- **Fit & Print:** <bed orientation, support strategy, critical load direction>
 
----
+## 2. Dimensions & Clearances (mm)
+| Feature | Nominal | Clearance | **CAD Target** | Source / Confidence |
+| :--- | ---: | ---: | ---: | :--- |
+| <e.g. Stand column OD> | 60.0 | +0.20 /side (+0.40 Ø) | **60.40 ID** | <spec / caliper / photo (high/med/low)> |
 
-## 1. Goal & Requirements
-- **Core Function:** What this part does, who/what it connects with, and primary design constraints.
-- **Ergonomics & Usage:** How it is handled, grabbed, or placed (one-handed operation, clearances, visibility).
-- **Physical Environment:** Tabletop, mount, cable routing, desk stability.
+## 3. Scene Map (all local meshes centered on `(0,0,0)`; positioned via `obj.location`)
+- `1_Printable_Parts`: `<Main_Part>` (`0, 0, 0`)
+- `2_Boolean_Cutters` (`hide_set(True)`, `hide_viewport=False`): `Cutter_<Feature>` (`x, y, z`)
+- `3_References`: `<Ref_Object>` (`x, y, z`)
 
----
+## 4. Active Decisions (current rules only — history in `LOG.md`)
+- <Active design constraint or rule>
 
-## 2. Hardware Specs & References
-
-### References Used
-- **[Device / Part 1]:** Datasheet URL, product page, or reference photo path.
-- **[Device / Part 2]:** Teardown link, caliper measurements, or user verification.
-
-### Critical Dimensions & Clearances
-
-| Component / Feature | Nominal / Evidence Type | Source / Method / Uncertainty | Toleranced CAD Target | Fit / Clearance Convention |
-| :--- | :--- | :--- | :--- |
-| **Feature 1** | 0.0 mm | **0.0 mm** | Clearance notes (slip fit, press fit, etc.) |
-| **Feature 2** | 0.0 mm | **0.0 mm** | ... |
-
-### Scene Structure & Coordinate Origins
-
-| Collection | Object Name | Role / Modifiers | Functional Origin `(X, Y, Z)` | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| `1_Printable_Parts` | `<Main_Part>` | Primary printable body (`MANIFOLD` booleans) | `(0.0, 0.0, 0.0)` | Exported to `<Project_Name>.3mf` |
-| `2_Boolean_Cutters` | `Cutter_<Feature>` | Analytical cutter (`Mirror` if symmetric) | Feature axis center | Hidden via `hide_set(True)` (`hide_viewport=False`) |
-| `3_References` | `Ref_<Product>` | Consolidated multi-material reference / scan | Mating interface center | Non-printable verification reference |
-
----
-
-## 3. Key Decisions & Lessons Learned
-*Log of design choices and rejected approaches (prevents repeating discarded mistakes).*
-
-- **[DEC-001] [Topic]:**
-  - *Conflict / Problem:* Description of the initial issue or conflict.
-  - *Resolution / Rationale:* Why the chosen direction was selected and what was abandoned.
-
----
-
-## 4. Iteration Log
-*Archive map of versions in `history/`.*
-
-| Version | File / Snapshot | Key Changes | Status / Outcome |
-| :--- | :--- | :--- | :--- |
-| **v1** | `history/<Project_Name>_v1.blend` | Initial prototype. | Superseded. |
-| **v2** | `history/<Project_Name>_v2.blend` | Refined geometry. | Current release. |
-
----
-
-## 5. Print Guidelines & Next Steps
-
-- **Printer:** Prusa Core One (0.4mm nozzle).
-- **Material:** PLA.
-- **Print Bed Orientation:** Recommended resting face on build plate ($Z = 0$).
-- **Supports:** None / Specific overhang details.
-- **Slicer Settings:** Perimeters (walls), infill pattern and density.
-- **Mesh Status:** Manifold shell, 0 non-manifold edges.
-- **Validation Performed:** List checks and results; distinguish automated checks from visual review and physical test prints.
-- **Export Status:** File path, date, and whether the 3MF was confirmed to exist and be non-empty.
-- **Known Limitations:** Uncertain measurements, untested fits, or unsupported validation claims.
-
-### Next Actions
-- [ ] Task 1.
-- [ ] Task 2.
+## 5. Latest Audit & Next Actions
+- `AUDIT <Main_Part>`: `size=(...) vol=...cm3 shells=1 nonmanifold=0 zero_area=0 overhang>45deg=...mm2`
+- [ ] <Next concrete step>
