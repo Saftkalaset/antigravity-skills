@@ -12,7 +12,7 @@
 
 ## 2. Mating Footprint & Structural Contours
 - **Mating Footprint Inset (Preventing Protruding Lips):** When designing a flat mounting deck under a curved or spherical product, do not size the deck to the product's outer silhouette. Wrap the contour tightly around the actual fastener/locating-pin envelope and inset the perimeter $3\text{–}8\text{ mm}$ inside the product's flat bottom contact ring so no lip protrudes beneath the curved body.
-- **Variable Thickness Optimization:** Match wall/slab thickness to the local bending moment: keep lightly loaded perimeters slim and ramp thickness upward (where clearance permits) across high-stress cantilever necks and clamping blocks.
+- **Variable Thickness Optimization:** Match wall/slab thickness to the local bending moment: keep lightly loaded perimeters slim and ramp thickness upward (where clearance permits) across high-stress cantilever necks and clamping blocks. Use a wide lower root bridge where cantilever moment peaks and flare outward at $\le 43^\circ$ from vertical only at concentrated load points (e.g., J-hook crowns/jaws) rather than uniformly thickening the entire spine.
 
 ## 3. 3D Scan Alignment & Insertion Kinematics
 - **Analytical Fit to Scans:** When aligning to a 3D scan, fit analytical geometry (e.g., least-squares 3D centerlines across scanned rod/surface vertices at the mating plane) to extract true symmetric spans and compound 3D slopes (`dX/dZ`, `dY/dZ`).

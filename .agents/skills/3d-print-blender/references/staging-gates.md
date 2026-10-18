@@ -3,7 +3,7 @@
 When developing new shapes, major redesigns, or complex profiles, **never execute everything in a single monolithic script** (derivation + extrusion + booleans + bevels + materials). Break work into distinct, visible stages committed to the live Blender session, with an explicit self-evaluation gate at each step:
 
 1. **Stage 1 — Skeleton & Guide Constraints:** Add reference wireframes, guide curves, or bounding boxes (e.g., `Guide_SpineCurve`, contact planes).
-   - *Self-Evaluation Gate:* Verify bounding dimensions, clearances, tangency, and alignment against `PROJECT.md` specs *before* generating surfaces.
+   - *Self-Evaluation Gate:* Verify bounding dimensions, clearances, tangency, and alignment against `PROJECT.md` specs *before* generating surfaces. For load-bearing cantilevers or hanging mounts, verify print orientation (1-piece upright vs. side-printed) and check nominal Z-layer peel stress ($\sigma_z = M / Z_s \le 3.0\text{ MPa}$ at the root corner) before committing to wall thicknesses.
 2. **Stage 2 — Primary Solid Body:** Loft, sweep, or extrude the un-cut base volume in `1_Printable_Parts`.
    - *Self-Evaluation Gate:* Confirm volume continuity, overall envelope, base stability (`Z_min = 0`), and `audit(obj)` (`shells=1, nonmanifold=0`).
 3. **Stage 3 — Features & Live Boolean Cuts:** Create single-shell cutters in `2_Boolean_Cutters` (`hide_cutters()`) and attach them via `add_live_boolean(obj, cutter)`.

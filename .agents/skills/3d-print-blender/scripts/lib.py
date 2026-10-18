@@ -144,6 +144,53 @@ def audit(obj, overhang_deg=45.0, verbose=False):
     return r
 
 
+def toolbox_check(obj):
+    """Run 3D-Print Toolbox on the EVALUATED mesh via view_layer.objects.active."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(obj.evaluated_get(dg), depsgraph=dg)
+    tmp = bpy.data.objects.new(obj.name + "_chk", me)
+    bpy.context.scene.collection.objects.link(tmp)
+    prev = bpy.context.view_layer.objects.active
+    try:
+        for o in bpy.context.selected_objects:
+            o.select_set(False)
+        tmp.select_set(True)
+        bpy.context.view_layer.objects.active = tmp
+        bpy.ops.mesh.print3d_check_all()
+        rep = {item.name: item.value for item in bpy.context.scene.print3d_toolbox.get_report()}
+        print(f"TOOLBOX {obj.name}: " + ", ".join(f"{k}={v}" for k, v in rep.items()))
+        return rep
+    finally:
+        bpy.context.view_layer.objects.active = prev
+        bpy.data.objects.remove(tmp, do_unlink=True)
+        bpy.data.meshes.remove(me)
+
+
+def inspect_ref(obj, top_n=8):
+    """Compact world-space summary of a reference mesh (bounds, shells, dominant Z planes)."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.transform(obj.matrix_world)
+    bm.normal_update()
+    xs = [v.co.x for v in bm.verts]; ys = [v.co.y for v in bm.verts]; zs = [v.co.z for v in bm.verts]
+    z_planes = {}
+    for f in bm.faces:
+        if abs(f.normal.z) > 0.95 and f.calc_area() > 10.0:
+            z = round(f.calc_center_median().z, 2)
+            z_planes[z] = round(z_planes.get(z, 0.0) + f.calc_area(), 1)
+    top_z = sorted(z_planes.items(), key=lambda kv: -kv[1])[:top_n]
+    r = {
+        "x": (round(min(xs), 2), round(max(xs), 2)),
+        "y": (round(min(ys), 2), round(max(ys), 2)),
+        "z": (round(min(zs), 2), round(max(zs), 2)),
+        "shells": _components(bm),
+        "top_z_planes": top_z,
+    }
+    bm.free()
+    print(f"REF {obj.name}: X={r['x']} Y={r['y']} Z={r['z']} shells={r['shells']} z_planes={top_z}")
+    return r
+
+
 # --------------------------------------------------------------------- cutters
 def make_extruded_cutter(name, pts2d, length, axis='Z', start=0.0, location=(0, 0, 0),
                          collection="2_Boolean_Cutters", hide=True):

@@ -7,17 +7,18 @@ description: >-
 # Blender 3D Printing Workflow
 
 ## 1. Session Bootstrap & Helper Library (`scripts/lib.py`)
-At the start of a Blender MCP session, load [`scripts/lib.py`](scripts/lib.py) once into the live namespace:
+At the start of a Blender MCP session, load [`scripts/lib.py`](scripts/lib.py) once into the live global namespace:
 ```python
-exec(open('/home/john/.gemini/config/skills/3d-print-blender/scripts/lib.py').read())
+exec(open('<skill-directory>/scripts/lib.py').read(), globals())
 check_env()
 ```
 - **Quiet Output Rule:** Never print per-vertex or per-face debug lists in MCP calls. All `lib.py` functions print a single compact summary line and return a dictionary.
 - **Core Helpers Available After Bootstrap:**
   - `check_env()` — verifies metric mm (`0.001` scale), `.3mf` exporter, and 3D-Print Toolbox.
   - `ensure_collections()` / `hide_cutters()` — maintains the 3 canonical collections and enforces the depsgraph visibility rule.
+  - `inspect_ref(obj)` — world-space bounds, shell count, and dominant horizontal contact planes for reference meshes in one call (includes `bm.normal_update()`).
   - `cleanup_mesh(obj, dist=0.01)` — merges doubles, dissolves degenerate zero-area faces/edges, removes loose geometry, and recalculates normals.
-  - `audit(obj, overhang_deg=45.0)` — evaluates the modifier-applied mesh in world space and reports `size`, `volume_cm3`, `shells`, `non_manifold`, `zero_area`, and `overhang_mm2` (+ top 5 overhang Z-bands).
+  - `audit(obj, overhang_deg=45.0)` & `toolbox_check(obj)` — evaluates the modifier-applied mesh in world space to report `size`, `volume_cm3`, `shells`, `non_manifold`, `zero_area`, `overhang_mm2`, and 3D-Print Toolbox checks.
   - `make_extruded_cutter(...)`, `make_cylinder_cutter(...)`, `add_live_boolean(target, cutter)` — builds watertight single-shell cutters in `2_Boolean_Cutters` and attaches live `BOOLEAN` (`solver='MANIFOLD'`) modifiers.
   - `apply_modifiers(obj)` — context-independent depsgraph bake (use only when freezing topology before final mesh-level bevels).
   - `snapshot_and_export(project_dir, obj, project_name=None, suffix="")` — saves `history/<name>_v<N>.blend`, saves root `<Project_Name>.blend`, and exports a temporary baked copy to both root `<Project_Name>.3mf` and `history/<name>_v<N>.3mf`.
