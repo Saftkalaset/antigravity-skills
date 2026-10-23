@@ -12,7 +12,10 @@ At the start of a Blender MCP session, load [`scripts/lib.py`](scripts/lib.py) o
 exec(open('<skill-directory>/scripts/lib.py').read(), globals())
 open_project('/home/john/Documents/Blender files/<Project Name>')
 ```
-- **Quiet Output & Diagnostic Discipline:** Never print per-vertex, per-face, or raw coordinate loops in MCP calls. Printing raw coordinate arrays floods context, burns tokens, and degrades attention. Use `quiet_summary(coords, label=...)` or `quiet_inspect(obj, z_range=..., min_area=...)` to print a single 1-line statistical digest (`count`, `X/Y/Z` spans, `centroid`). All `lib.py` functions return a dictionary and automatically register themselves (plus `bmesh`, `json`, `math`, `os`, `re`) in Python `builtins` so they stay in scope across all subsequent `execute_blender_code` calls in the session without re-loading `lib.py`.
+- **Quiet Output & Diagnostic Discipline:**
+  - **Default to digests:** Use `quiet_summary(coords, label=...)` or `quiet_inspect(obj, ...)` for point clouds, perimeters, or face clusters to print a single 1-line statistical digest (`count`, `X/Y/Z` spans, `centroid`).
+  - **Cap discrete samples:** If specific coordinates are needed (e.g. pin centers or datums), query the exact scalar or slice at most 5 items (`pts[:5]`). Never print unbounded lists or coordinate loops in MCP calls.
+  - **Library persistence:** All `lib.py` functions return a dictionary, print a single compact summary line, and automatically register themselves (plus `bmesh`, `json`, `math`, `os`, `re`) in Python `builtins` so they stay in scope across all subsequent `execute_blender_code` calls in the session without re-loading `lib.py`.
   - **Execution Scope Invariant:** Python `builtins` persist across MCP calls, but local script variables (e.g. `pos = ...`) do NOT. Always re-acquire objects via `bpy.data.objects["..."]` or store session references on `builtins` / `scene` to avoid `NameError` roundtrips.
 - **Core Helpers Available After Bootstrap:**
   - `open_project(project_dir)` / `check_env()` — opens the root `.blend` if needed, verifies metric mm (`0.001` scale), `.3mf` exporter, 3D-Print Toolbox, auto-loads `parametric_recipe.py` functions into `builtins`, and prints cached `scene["cad_specs"]` plus collection bounding boxes (`world_bbox(obj)`), modifiers, and `cutter_def` spans.
