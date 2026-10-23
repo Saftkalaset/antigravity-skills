@@ -15,8 +15,13 @@ Usage:
 
 import argparse
 import sys
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
+
+
+def _load_upright(path):
+    """Load an image and apply EXIF orientation transpose so phone photos are never rotated."""
+    return ImageOps.exif_transpose(Image.open(path))
 
 
 def cmd_calibrate(args):
@@ -33,7 +38,7 @@ def cmd_bbox(args):
         raise ValueError("--scale must be greater than zero")
     if not 0 <= args.bg_thresh <= 255:
         raise ValueError("--bg-thresh must be between 0 and 255")
-    img = Image.open(args.image).convert("RGBA")
+    img = _load_upright(args.image).convert("RGBA")
     arr = np.array(img)
     alpha = arr[:, :, 3]
     rgb = arr[:, :, :3]
@@ -60,18 +65,23 @@ def cmd_bbox(args):
 
 
 def cmd_crop(args):
-    img = Image.open(args.image)
-    try:
-        box = [int(v.strip()) for v in args.coords.split(",")]
-    except ValueError:
-        raise ValueError("--coords must be four comma-separated integers: x1,y1,x2,y2")
-    if len(box) != 4:
-        raise ValueError("--coords must contain exactly four integers: x1,y1,x2,y2")
-    if not (0 <= box[0] < box[2] <= img.width and 0 <= box[1] < box[3] <= img.height):
-        raise ValueError(f"Crop must satisfy 0 <= x1 < x2 <= {img.width} and 0 <= y1 < y2 <= {img.height}")
-    cropped = img.crop(box)
-    cropped.save(args.out)
-    print(f"Saved cropped image ({box[2]-box[0]}x{box[3]-box[1]} px) to: {args.out}")
+    img = _load_upright(args.image)
+    if args.coords:
+        try:
+            box = [int(v.strip()) for v in args.coords.split(",")]
+        except ValueError:
+            raise ValueError("--coords must be four comma-separated integers: x1,y1,x2,y2")
+        if len(box) != 4:
+            raise ValueError("--coords must contain exactly four integers: x1,y1,x2,y2")
+        if not (0 <= box[0] < box[2] <= img.width and 0 <= box[1] < box[3] <= img.height):
+            raise ValueError(f"Crop must satisfy 0 <= x1 < x2 <= {img.width} and 0 <= y1 < y2 <= {img.height}")
+        img = img.crop(box)
+    if args.gamma and args.gamma != 1.0:
+        arr = np.array(img.convert("RGB"), dtype=np.float32) / 255.0
+        arr = np.power(arr, args.gamma) * 255.0
+        img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+    img.save(args.out)
+    print(f"Saved upright image ({img.width}x{img.height} px) to: {args.out}")
 
 
 def main():
@@ -90,9 +100,10 @@ def main():
     p_bbox.add_argument("--bg-thresh", type=int, default=245, help="RGB threshold for white background")
 
     # crop
-    p_crop = subparsers.add_parser("crop", help="Crop image for inspection")
+    p_crop = subparsers.add_parser("crop", help="EXIF-orient, optionally crop and gamma-brighten image")
     p_crop.add_argument("--image", required=True, help="Path to image")
-    p_crop.add_argument("--coords", required=True, help="x1,y1,x2,y2")
+    p_crop.add_argument("--coords", help="Optional x1,y1,x2,y2 crop box")
+    p_crop.add_argument("--gamma", type=float, default=1.0, help="Gamma (<1.0 lifts dark shadows, e.g. 0.4)")
     p_crop.add_argument("--out", required=True, help="Output image path")
 
     args = parser.parse_args()

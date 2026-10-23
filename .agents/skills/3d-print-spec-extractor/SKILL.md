@@ -10,10 +10,14 @@ Use this skill to gather and report physical dimensions from manufacturer photos
 
 ## Workflow
 
-### 1. Acquire Clean Reference Images
+### 1. Acquire & Orient Clean Reference Images
 - Prefer manufacturer drawings, datasheets, and direct caliper measurements. If downloading images, use a temporary scratch directory and retain the source URL:
   ```bash
   curl -s -L -o scratch/ref_image.png "<image_url>"
+  ```
+- **Phone Photos (EXIF Orientation & Dark Shadows):** Smartphone photos (`IMG_*.JPG`) often store rotation in EXIF Tag 274 and underexpose dark/black printed parts in shadow. Before viewing or measuring a phone photo, normalize its EXIF orientation and (if dark) lift shadows with `--gamma 0.4` in a single call:
+  ```bash
+  python3 <skill-directory>/scripts/measure_reference.py crop --image "<photo.jpg>" --gamma 0.4 --out scratch/upright.jpg
   ```
 - Prioritize straight-on orthographic or flat perspective shots over angled hero renders when available.
 - A single scale applies only to features on approximately the same plane as the calibration feature. Perspective, lens distortion, and depth differences introduce error. Do not claim precision from an angled image; report the limitation or find a better reference.
@@ -28,7 +32,7 @@ python3 <skill-directory>/scripts/measure_reference.py calibrate --px <measured_
 ```
 
 ### 3. Measure Unknown Features
-Crop tightly around the target and measure its selected pixel span. `bbox` finds all non-background pixels in an image; it does not identify a particular feature and may include shadows, labels, or other objects. Use image inspection or explicit coordinates to select the intended feature:
+Crop tightly around the target and measure its selected pixel span (`measure_reference.py` automatically applies `ImageOps.exif_transpose` on load). `bbox` finds all non-background pixels in an image; it does not identify a particular feature and may include shadows, labels, or other objects. Use image inspection or explicit coordinates to select the intended feature:
 ```bash
 python3 <skill-directory>/scripts/measure_reference.py bbox --image scratch/crop.png --scale <calibrated_scale>
 ```
