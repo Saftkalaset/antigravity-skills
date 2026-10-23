@@ -477,6 +477,59 @@ def inspect_ref(obj, top_n=8):
     return r
 
 
+def quiet_summary(coords, label="POINTS"):
+    """Compact 1-line statistical digest (count, X/Y/Z spans, centroid) of vectors/tuples/vertices.
+
+    Use whenever querying vertex or face clusters to prevent flooding LLM context with raw arrays.
+    """
+    pts = []
+    for c in coords:
+        if hasattr(c, "co"):
+            pts.append(c.co)
+        elif hasattr(c, "x") and hasattr(c, "y"):
+            pts.append(c)
+        elif isinstance(c, (tuple, list)) and len(c) >= 2:
+            pts.append(Vector((c[0], c[1], c[2] if len(c) > 2 else 0.0)))
+    if not pts:
+        print(f"{label}: n=0 (empty)")
+        return {"n": 0}
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    zs = [p[2] if len(p) > 2 else 0.0 for p in pts]
+    r = {
+        "n": len(pts),
+        "x": (round(min(xs), 2), round(max(xs), 2)),
+        "y": (round(min(ys), 2), round(max(ys), 2)),
+        "z": (round(min(zs), 2), round(max(zs), 2)),
+        "centroid": (round(sum(xs) / len(xs), 2), round(sum(ys) / len(ys), 2), round(sum(zs) / len(zs), 2))
+    }
+    print(f"{label}: n={r['n']} X={r['x']} Y={r['y']} Z={r['z']} centroid={r['centroid']}")
+    return r
+
+
+def quiet_inspect(obj, z_range=None, min_area=None):
+    """World-space filtered digest of vertices/faces on obj matching z_range=(z0, z1) or min_area.
+
+    Prints one summary line instead of raw coordinate loops.
+    """
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.transform(obj.matrix_world)
+    verts = bm.verts
+    if z_range is not None:
+        verts = [v for v in verts if z_range[0] <= v.co.z <= z_range[1]]
+    faces = bm.faces
+    if z_range is not None:
+        faces = [f for f in faces if z_range[0] <= f.calc_center_median().z <= z_range[1]]
+    if min_area is not None:
+        faces = [f for f in faces if f.calc_area() >= min_area]
+    label = f"INSPECT {obj.name}" + (f" Z={z_range}" if z_range else "") + (f" area>={min_area}" if min_area else "")
+    res = quiet_summary([v.co for v in verts], label=label)
+    res["faces_matching"] = len(faces)
+    bm.free()
+    return res
+
+
 # --------------------------------------------------------------------- cutters
 def rounded_poly_2d(pts2d, r=3.0, arc_steps=6):
     """Round corners of a 2D polygon `pts2d` with uniform radius `r` or per-vertex radii list/tuple (`r_i <= 0` keeps sharp)."""
